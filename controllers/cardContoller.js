@@ -1,9 +1,10 @@
-import Board from "../models/Board";
-import Column from "../models/Column";
-import Card from "../models/Card";
-import Message from "../models/Message";
-import Notification from "../models/Notification";
-import User from "../models/User";
+import Board from "../models/Board.js";
+import Column from "../models/Column.js";
+import Card from "../models/Card.js";
+import Message from "../models/Message.js";
+import Notification from "../models/Notification.js";
+import User from "../models/User.js";
+import cloudinary from "../config/cloudinary.js";
 
 export const getCards = async (req, res) => {
   try {
@@ -35,7 +36,7 @@ export const getCard = async (req, res) => {
 
 export const createCard = async (req, res) => {
   try {
-    const { title, column, createdBy } = req.body;
+    const { title, column, createdBy, attachments } = req.body;
 
     const highestOrderCard = await Card.findOne({ column }).sort({ order: -1 });
     const newOrder = (highestOrderCard?.order || 0) + 1;
@@ -44,7 +45,8 @@ export const createCard = async (req, res) => {
       title,
       column,
       createdBy,
-      order: newOrder
+      order: newOrder,
+      ...(Array.isArray(attachments) ? { attachments } : {})
     });
 
     await card.save();
@@ -57,12 +59,30 @@ export const createCard = async (req, res) => {
 export const updateCard = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, dueDate } = req.body;
+    const { title, description, dueDate, attachmentUrl } = req.body;
+
+    const updateData = { $set: {} };
+
+    if (title !== undefined) updateData.$set.title = title;
+    if (description !== undefined) updateData.$set.description = description;
+    if (dueDate !== undefined) updateData.$set.dueDate = dueDate;
+
+    if (Object.keys(updateData.$set).length === 0) {
+      delete updateData.$set;
+    }
+
+    if (attachmentUrl) {
+      updateData.$push = { attachments: attachmentUrl };
+    }
+
+    if (!updateData.$set && !updateData.$push) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
 
     const card = await Card.findByIdAndUpdate(
       id,
-      { title, description, dueDate },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!card) return res.status(404).json({ message: 'Card not found' });
@@ -183,4 +203,66 @@ export const deleteCard = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const deleteAttachment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { url, public_id } = req.body;
+
+    if (!url && !public_id) {
+      return res.status(400).json({ message: 'url or public_id is required' });
+    }
+
+    const extractPublicIdFromUrl = (attachmentUrl) => {
+      try {
+        const parts = attachmentUrl.split('/upload/');
+        if (parts.length < 2) return null;
+
+        let pathPart = parts[1];
+        pathPart = pathPart.replace(/^v\d+\//, '');
+        pathPart = pathPart.split('?')[0];
+        pathPart = pathPart.replace(/\.[^/.]+$/, '');
+
+        return pathPart || null;
+      } catch {
+        return null;
+      }
+    };
+
+    const cloudinaryPublicId = public_id || extractPublicIdFromUrl(url);
+    if (!cloudinaryPublicId) {
+      return res.status(400).json({ message: 'Invalid URL or public_id' });
+    }
+
+    await cloudinary.uploader.destroy(cloudinaryPublicId);
+
+    let attachmentUrlToPull = url;
+    if (!attachmentUrlToPull) {
+      const existingCard = await Card.findById(id).select('attachments');
+      if (!existingCard) return res.status(404).json({ message: 'Card not found' });
+
+      attachmentUrlToPull = (existingCard.attachments || []).find((att) =>
+        typeof att === 'string' ? att.includes(cloudinaryPublicId) : false
+      );
+    }
+
+    const updateQuery = attachmentUrlToPull
+      ? { $pull: { attachments: attachmentUrlToPull } }
+      : {};
+
+    const card = await Card.findByIdAndUpdate(id, updateQuery, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!card) return res.status(404).json({ message: 'Card not found' });
+
+    res.json(card);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
 
