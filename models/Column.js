@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const columnSchema = new mongoose.Schema(
   {
@@ -20,4 +20,4 @@ const columnSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
-module.exports = mongoose.model('Column', columnSchema);
+export default mongoose.model('Column', columnSchema);

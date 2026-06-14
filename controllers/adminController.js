@@ -4,7 +4,7 @@ import Board from '../models/Board.js';
 import Card from '../models/Card.js';
 
 // Get workspace users with populated member details
-const getWorkspaceUsers = async (req, res) => {
+export const getWorkspaceUsers = async (req, res) => {
   try {
     const { id } = req.params;
     const workspace = await Workspace.findById(id).populate('members', 'name email role avatar');
@@ -20,7 +20,7 @@ const getWorkspaceUsers = async (req, res) => {
 };
 
 // Change user role in workspace
-const changeUserRole = async (req, res) => {
+export const changeUserRole = async (req, res) => {
   try {
     const { workspaceId, userId } = req.params;
     const { role } = req.body;
@@ -51,7 +51,7 @@ const changeUserRole = async (req, res) => {
 };
 
 // Remove user from workspace
-const removeUser = async (req, res) => {
+export const removeUser = async (req, res) => {
   try {
     const { workspaceId, userId } = req.params;
     const requesterId = req.user.id; // Assuming user is attached to request
@@ -78,7 +78,7 @@ const removeUser = async (req, res) => {
 };
 
 // Get workspace statistics
-const getWorkspaceStats = async (req, res) => {
+export const getWorkspaceStats = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -111,11 +111,4 @@ const getWorkspaceStats = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error fetching workspace stats', error: error.message });
   }
-};
-
-module.exports = {
-  getWorkspaceUsers,
-  changeUserRole,
-  removeUser,
-  getWorkspaceStats
 };

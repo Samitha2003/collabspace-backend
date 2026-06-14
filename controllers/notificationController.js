@@ -1,9 +1,9 @@
-import { find, findById, updateMany } from '../models/Notification.js';
+import Notification from '../models/Notification.js';
 
 // Get all unread notifications for the current user
 export async function getNotifications(req, res) {
   try {
-    const notifications = await find({
+    const notifications = await Notification.find({
       recipient: req.user._id,
       read: false
     }).sort({ createdAt: -1 });

@@ -12,3 +12,4 @@ router.delete('/:id', protect, deleteWorkspace);
 router.post('/:id/members', protect, addMember);
 router.delete('/:id/members/:memberId', protect, removeMember);
 
+export default router;

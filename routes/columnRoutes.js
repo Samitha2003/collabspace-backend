@@ -7,3 +7,5 @@ const router = Router();
 router.post('/', protect, createColumn);
 router.put('/:id', protect, updateColumn);
 router.delete('/:id', protect, deleteColumn);
+
+export default router;

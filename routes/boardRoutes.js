@@ -1,5 +1,5 @@
 import {Router} from 'express';
-import { createBoard, getBoards, getBoardById, updateBoard, deleteBoard } from '../controllers/boardController.js';
+import { createBoard, getBoards, getBoard, updateBoard, deleteBoard } from '../controllers/boardController.js';
 import protect from '../middleware/protect.js';
 
 const router = Router();
@@ -9,7 +9,7 @@ router.route('/')
     .post(protect, createBoard);
 
 router.route('/:id')
-    .get(protect, getBoardById)
+    .get(protect, getBoard)
     .put(protect, updateBoard)
     .delete(protect, deleteBoard);
 

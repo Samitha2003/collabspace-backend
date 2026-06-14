@@ -6,3 +6,5 @@ const router = Router();
 
 router.get('/', protect, getMessages);
 router.post('/', protect, sendMessage);
+
+export default router;
