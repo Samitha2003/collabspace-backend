@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import express from "express";
 import http from "http";
 import cors from "cors";
@@ -13,9 +13,6 @@ import messageRoutes from "./routes/messageRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-
-// Load environment variables from .env file
-dotenv.config();
 
 const app = express();
 
