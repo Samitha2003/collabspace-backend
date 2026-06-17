@@ -5,6 +5,7 @@ import Message from "../models/Message.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import cloudinary from "../config/cloudinary.js";
+import { io } from "../server.js";
 
 export const getCards = async (req, res) => {
   try {
@@ -87,6 +88,12 @@ export const updateCard = async (req, res) => {
 
     if (!card) return res.status(404).json({ message: 'Card not found' });
 
+    const column = await Column.findById(card.column).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardUpdated", card);
+    }
+
     res.json(card);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -109,6 +116,12 @@ export const moveCard = async (req, res) => {
     card.order = order;
 
     await card.save();
+
+    const column = await Column.findById(columnId).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardMoved", card);
+    }
 
     res.json(card);
   } catch (error) {
@@ -134,15 +147,24 @@ export const assignUser = async (req, res) => {
 
     // create a notification for the assigned user
     try {
-      await Notification.create({
-        user: userId,
-        type: 'card_assignment',
+      const notification = await Notification.create({
+        recipient: userId,
+        type: 'card_assigned',
         message: `You were assigned to card: ${card.title}`,
-        reference: card._id
+        relatedCard: card._id
       });
+
+      io.to(userId).emit("newNotification", notification);
+      
     } catch (notifErr) {
       // Log but don't fail the whole request
       console.error('Notification creation failed', notifErr);
+    }
+
+    const column = await Column.findById(card.column).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardAssigned", card);
     }
 
     res.json(card);
@@ -196,6 +218,12 @@ export const deleteCard = async (req, res) => {
       await Notification.deleteMany({ reference: id });
     } catch (cleanupErr) {
       console.error('Cleanup after card deletion failed', cleanupErr);
+    }
+
+    const column = await Column.findById(columnId).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardDeleted", { cardId: id, columnId });
     }
 
     res.json({ message: 'Card deleted' });

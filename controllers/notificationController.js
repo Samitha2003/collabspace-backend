@@ -1,4 +1,5 @@
 import Notification from '../models/Notification.js';
+import { io } from '../server.js';
 
 // Get all unread notifications for the current user
 export async function getNotifications(req, res) {
@@ -17,7 +18,7 @@ export async function getNotifications(req, res) {
 // Mark a notification as read
 export async function markAsRead(req, res) {
   try {
-    const notification = await findById(req.params.id);
+    const notification = await Notification.findById(req.params.id);
 
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
@@ -40,7 +41,7 @@ export async function markAsRead(req, res) {
 // Mark all notifications as read for the current user
 export async function markAllAsRead(req, res) {
   try {
-    const result = await updateMany(
+    const result = await Notification.updateMany(
       { recipient: req.user._id, read: false },
       { read: true }
     );

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import http from "http";
+import { Server } from "socket.io";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
@@ -13,11 +14,27 @@ import messageRoutes from "./routes/messageRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import registerSocketHandlers from "./sockets/socketHandlers.js";
 
 const app = express();
 
+// Set view engine
+app.set("view engine", "ejs");
+
 // Create HTTP server
 const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: process.env.CLIENT_URL,
+        credentials: true,
+    }
+});
+
+
+io.on("connection", (socket) => {
+    registerSocketHandlers(io, socket);
+});
 
 // Used to parse JSON bodies
 app.use(express.json());
@@ -57,3 +74,6 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+
+export { io };
+
