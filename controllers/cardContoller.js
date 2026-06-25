@@ -6,6 +6,7 @@ import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import cloudinary from "../config/cloudinary.js";
 import { io } from "../server.js";
+import createNotification from "../utils/createNotification.js";
 
 export const getCards = async (req, res) => {
   try {
@@ -147,14 +148,12 @@ export const assignUser = async (req, res) => {
 
     // create a notification for the assigned user
     try {
-      const notification = await Notification.create({
-        recipient: userId,
-        type: 'card_assigned',
-        message: `You were assigned to card: ${card.title}`,
+      const notification = await createNotification({ 
+        recipient: userId, 
+        type: "card_assigned", 
+        message: "You were assigned to a card: " + card.title, 
         relatedCard: card._id
-      });
-
-      io.to(userId).emit("newNotification", notification);
+      })
       
     } catch (notifErr) {
       // Log but don't fail the whole request
@@ -291,6 +290,82 @@ export const deleteAttachment = async (req, res) => {
   }
 };
 
+export const addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
 
+    if (!text) return res.status(400).json({ message: 'Comment text is required' });
 
+    const card = await Card.findById(id);
+    if (!card) return res.status(404).json({ message: 'Card not found' });
 
+    const newComment = {
+      text,
+      author: req.user._id,
+      createdAt: new Date(),
+    };
+
+    card.comments.push(newComment);
+    await card.save();
+
+    await card.populate('comments.author', 'username avatar');
+    
+    const addedComment = card.comments[card.comments.length - 1];
+
+    const commenter = await User.findById(req.user._id);
+    const commenterName = commenter ? commenter.username : 'Someone';
+    
+    if (card.createdBy.toString() !== req.user._id.toString()) {
+      try {
+        await createNotification({
+          recipient: card.createdBy,
+          type: "new_comment",
+          message: `${commenterName} commented on '${card.title}'`,
+          relatedCard: card._id
+        });
+      } catch (notifErr) {
+        console.error('Notification creation failed', notifErr);
+      }
+    }
+
+    const column = await Column.findById(card.column).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardUpdated", card);
+    }
+
+    res.status(201).json(addedComment);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const card = await Card.findById(id);
+    if (!card) return res.status(404).json({ message: 'Card not found' });
+
+    const comment = card.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    if (comment.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    card.comments.pull(commentId);
+    await card.save();
+
+    const column = await Column.findById(card.column).populate('board');
+    if (column && column.board) {
+      const workspaceId = column.board.workspace.toString();
+      io.to(workspaceId).emit("cardUpdated", card);
+    }
+
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

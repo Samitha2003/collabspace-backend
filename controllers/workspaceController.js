@@ -4,6 +4,7 @@ import Column from '../models/Column.js';
 import Card from '../models/Card.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
+import createNotification from '../utils/createNotification.js';
 
 export const getWorkspaces = async (req, res) => {
     try {
@@ -118,6 +119,9 @@ export const addMember = async (req, res) => {
             { $push: { members: user._id } },
             { new: true }
         );
+
+        await createNotification(user._id, 'workspace_invite', `You have been added to the workspace: ${workspace.name}`, workspace._id);
+
         res.json({ message: 'Member added successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });

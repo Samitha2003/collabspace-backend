@@ -6,7 +6,20 @@ export default function registerSocketHandlers(io, socket) {
     });
 
     socket.on("joinUserRoom", (userId) => {
+        if (typeof userId !== "string" || userId.trim() === "") {
+            console.warn(`Invalid userId provided to joinUserRoom: ${userId}`);
+            return;
+        }
+        console.log(`joinUserRoom: userId=${userId}, socketId=${socket.id}`);
         socket.join(userId);
+    });
+
+    socket.on("leaveUserRoom", (userId) => {
+        if (typeof userId !== "string" || userId.trim() === "") {
+            return;
+        }
+        console.log(`leaveUserRoom: userId=${userId}, socketId=${socket.id}`);
+        socket.leave(userId);
     });
 
     socket.on("leaveWorkspace", (workspaceId) => {

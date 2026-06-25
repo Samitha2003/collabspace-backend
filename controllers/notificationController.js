@@ -7,7 +7,10 @@ export async function getNotifications(req, res) {
     const notifications = await Notification.find({
       recipient: req.user._id,
       read: false
-    }).sort({ createdAt: -1 });
+    })
+    .populate('relatedCard', 'title')
+    .populate('relatedColumn', 'name')
+    .sort({ createdAt: -1 });
 
     res.status(200).json(notifications);
   } catch (error) {
@@ -50,6 +53,18 @@ export async function markAllAsRead(req, res) {
       message: 'All notifications marked as read',
       modifiedCount: result.modifiedCount 
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function getUnreadCount(req, res) {
+  try {
+    const count = await Notification.countDocuments({
+      recipient: req.user._id,
+      read: false
+    });
+    res.status(200).json({ unreadCount: count });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
